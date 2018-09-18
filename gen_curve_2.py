@@ -2,7 +2,8 @@
 
 import bpy
 import numpy as np
-import pandas as pd
+#import pandas as pd
+import csv
 from math import floor, pi, cos, sin
 
 def seg_gen(data):
@@ -17,7 +18,7 @@ def seg_gen(data):
     	pts[i].co = (x,y,z,1)
     return c
 
-def seg_link(seg):
+def seg_link(seg_obj):
 	scn = bpy.context.scene
 	scn.objects.link(seg_obj)
 	return True
@@ -28,12 +29,10 @@ def h_bound(crnt,add):
 	h = h - floor(h/360)*360
 	return h
 
-
 def r_mat(ang,anti_clockwise):
 	rad = ang*pi/180
 	sign = 2*int(anti_clockwise)-1
 	return np.array([[cos(rad),sin(rad)*sign],[-sin(rad)*sign,cos(rad)]]) #counter_clockwise
-
 
 def centre(pt,d,crv,deg):
 	pt = np.array(pt).reshape(1,2)
@@ -47,8 +46,8 @@ def centre(pt,d,crv,deg):
 	return c
 
 def data_cvrt(array):
-	#['line',length,r_direction(deg),start_x, start_y]
-	#['curve', curvature, deg, start_-x, starrt_y]
+	#['line',length,r_direction(deg),*start_x, *start_y]
+	#['curve', curvature, deg, *start_-x, *start_y]
 	data = np.empty((0,4)) #[station, x,y,z]
 	nrow, ncol = array.shape
 	g_h = 0
@@ -70,7 +69,7 @@ def data_cvrt(array):
 				data = np.concatenate((data,temp),0)
 			station = station+l
 			startPt = data[-1][1:3]
-		elif seg[0] == 'curve':
+		elif seg[0] == 'curve': 
 			c,deg = seg[1:3]
 			x,y = startPt
 			n_pt = int(abs(deg)*res)
@@ -110,50 +109,57 @@ def data_cvrt(array):
 			raise Exception('error: cannot recognise seg type')
 	return data
 
+def draw():
+	# csv_path = '/home/tom/Desktop/path.csv'
+	# txt_path = '/home/tom/Desktop/tmp.csv'
+	# texture_path = '/home/tom/Desktop/r_tex.jpg'
+	csv_path = 'C:\\Users\\tom\\Desktop\\blSim\\path.csv'
+	save_path = 'C:\\Users\\tom\\Desktop\\blSim\\tmp.csv'
+	texture_path = 'C:\\Users\\tom\\Desktop\\blSim\\r_tex.jpg'
+	#csv_file = pd.read_csv(csv_path, header = None)
+	csv_file = open(csv_path,newline = '')
+	rows = csv.reader(csv_file)
+	csv_data = np.array(list(rows), dtype = 'object')
+	csv_data[:,1:4] = csv_data[:,1:3].astype('double').astype('object')
+	output = data_cvrt(csv_data)
+	np.savetxt(save_path,output,delimiter = ',')
 
-csv_file = pd.read_csv('/home/tom/Desktop/path.csv', header = None)
-csv = np.array(csv_file)
+	cv = seg_gen(output[:,1:4])
+	seg_obj = bpy.data.objects.new('gen_segment', cv)
+	seg_link(seg_obj)
 
-output = data_cvrt(csv)
-np.savetxt("/home/tom/Desktop/tmp.csv",output,delimiter = ',')
+	'''applying road texture'''
 
-cv = seg_gen(output[:,1:4])
-seg_obj = bpy.data.objects.new('gen_segment', cv)
-seg_link(cv)
+	bpy.ops.mesh.primitive_plane_add(radius = 2,location = (0,0,0))
 
-'''applying road texture'''
-
-bpy.ops.mesh.primitive_plane_add(radius = 2,location = (0,0,0))
-
-plane = bpy.data.objects.get('Plane')
-plane.select = True
-
-
-img = bpy.data.images.load('/home/tom/Desktop/r_tex.jpg')
-tex = bpy.data.textures.new('road_tex',type = 'IMAGE')
-tex.image = img
-mat = bpy.data.materials.new('road_mat')
-t_slot = mat.texture_slots.add()
-t_slot.texture = tex
-plane.material_slots.data.active_material = mat
-
-bpy.context.scene.objects.active = plane
-bpy.ops.object.editmode_toggle()
-plane.data.uv_textures.new(name = 'UV')
-plane.active_material.emit = 2
-bpy.ops.object.editmode_toggle()
+	plane = bpy.data.objects.get('Plane')
+	plane.select = True
 
 
-for area in bpy.context.screen.areas:
-	if area.type == 'VIEW_3D':
-		for space in area.spaces:
-			if space.type == 'VIEW_3D':
-				space.viewport_shade = 'MATERIAL'
+	img = bpy.data.images.load(texture_path)
+	tex = bpy.data.textures.new('road_tex',type = 'IMAGE')
+	tex.image = img
+	mat = bpy.data.materials.new('road_mat')
+	t_slot = mat.texture_slots.add()
+	t_slot.texture = tex
+	plane.material_slots.data.active_material = mat
+
+	bpy.context.scene.objects.active = plane
+	bpy.ops.object.editmode_toggle()
+	plane.data.uv_textures.new(name = 'UV')
+	plane.active_material.emit = 2
+	bpy.ops.object.editmode_toggle()
 
 
-m_array = plane.modifiers.new(name = 'road_surface', type = 'ARRAY')
-m_array.count = output[-1][0]*0.8
-m_curve = plane.modifiers.new(name = 'path', type = 'CURVE')
-m_curve.object = bpy.data.objects['gen_segment']
+	for area in bpy.context.screen.areas:
+		if area.type == 'VIEW_3D':
+			for space in area.spaces:
+				if space.type == 'VIEW_3D':
+					space.viewport_shade = 'MATERIAL'
 
 
+	m_array = plane.modifiers.new(name = 'road_surface', type = 'ARRAY')
+	m_array.count = output[-1][0]*0.8
+	m_curve = plane.modifiers.new(name = 'path', type = 'CURVE')
+	m_curve.object = bpy.data.objects['gen_segment']
+	return True
