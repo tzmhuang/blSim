@@ -1,1 +1,1 @@
-"C:\Program Files\Blender Foundation\Blender\blender.exe" --python "C:\Users\tom\Desktop\blSim\motion_udp.py"
+"C:\Program Files\Blender Foundation\Blender\blender.exe" "C:\Users\tom\Desktop\blSim\world.blend" --python "C:\Users\tom\Desktop\blSim\motion_udp.py"
