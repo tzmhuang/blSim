@@ -130,7 +130,7 @@ def draw():
 
 	'''applying road texture'''
 
-	bpy.ops.mesh.primitive_plane_add(radius = 2,location = (0,0,0))
+	bpy.ops.mesh.primitive_plane_add(radius = 7,location = (0,0,0))
 
 	plane = bpy.data.objects.get('Plane')
 	plane.select = True
